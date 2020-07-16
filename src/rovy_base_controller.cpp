@@ -27,7 +27,7 @@ void plannerCallback(const geometry_msgs::TwistConstPtr& msg) {
 void keyboardCallback(const geometry_msgs::TwistConstPtr& msg) {
     keyboardActive = true;
 
-    ROS_INFO("Key Linear: %f Angular: %f", msg->linear.x, msg->angular.z);
+//    ROS_INFO("Key Linear: %f Angular: %f", msg->linear.x, msg->angular.z);
 
     if (controller) {
         controller->drive(msg->linear.x, msg->angular.z);
@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
   ros::Subscriber keySub = n.subscribe("key_vel", 1, keyboardCallback);
 
   controller = RovyMotorController::Create();
-  if (controller->start(300) < 0) {
+  if (controller->start(350) < 0) {
       ROS_ERROR("controller->start() returned error code");
       return -1;
   }
