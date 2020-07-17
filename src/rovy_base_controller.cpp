@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
   ros::Subscriber keySub = n.subscribe("key_vel", 1, keyboardCallback);
 
   controller = RovyMotorController::Create();
-  if (controller->start(350) < 0) {
+  if (controller->start(350, 400) < 0) {
       ROS_ERROR("controller->start() returned error code");
       return -1;
   }
