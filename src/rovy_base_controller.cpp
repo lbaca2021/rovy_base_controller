@@ -19,8 +19,11 @@ void plannerCallback(const geometry_msgs::TwistConstPtr& msg) {
         ROS_INFO("Planner Linear: %f Angular: %f", msg->linear.x, msg->angular.z);
 
         if (controller) {
-            controller->drive(msg->linear.x, msg->angular.z / (2*M_PI/360));
+            controller->drive(msg->linear.x, msg->angular.z);
         }
+
+        timer.stop();
+        timer.start();
     }
 }
 
