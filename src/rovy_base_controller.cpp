@@ -7,43 +7,9 @@
 static ros::Timer twistTimer;
 static RovyMotorController *controller = NULL;
 static bool keyboardActive = false;
-static bool localized = false;
-static ros::Subscriber rtabmap, proximity;
+static bool mapReceived = false;
+static ros::Subscriber rtabmap, map;
 static ros::NodeHandle *nodeHande = NULL;
-
-#define RELOCATION_FLAG_FILE "/tmp/relocated"
-
-void rotateUntilLocalized() {
-    if (!keyboardActive) {
-        ROS_INFO("rotating for localization...");
-    }
-
-    bool rotate = true;
-    int count = 0;
-    ros::Rate rate(10);
-
-    while (!localized && ros::ok()) {
-        if (!keyboardActive) {
-            if (count++ > 25) {
-                rotate = !rotate;
-                count = 0;
-            }
-
-            if (controller) {
-                controller->drive(0, rotate ? 0.7 : 0);
-            }
-        }
-        rate.sleep();
-    }
-
-    if (controller) {
-        controller->drive(0, 0);
-    }
-
-    if (localized) {
-        ROS_INFO("localized!");
-    }
-}
 
 void twistTimerCallback(const ros::TimerEvent& event) {
     ROS_INFO("---- twist timer called ----");
@@ -77,37 +43,45 @@ void keyboardCallback(const geometry_msgs::TwistConstPtr& msg) {
     twistTimer.start();
 }
 
-void proximityCallback(const nav_msgs::OccupancyGridConstPtr& msg) {
-    proximity.shutdown();
-    ROS_INFO("proximity localization");
-    localized = true;
+void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg) {
+    map.shutdown();
+    mapReceived = true;
 }
 
-void rtabmapCallback2(const rtabmap_ros::Info& msg) {
-    if (msg.loopClosureId > 0) {
-        ROS_INFO("loopClosureId localization");
-        rtabmap.shutdown();
-        remove(RELOCATION_FLAG_FILE);
-        localized = true;
+void rotateUntilLocalized() {
+    bool rotate = true;
+    int count = 0;
+    ros::Rate rate(10);
+
+    while ((access("/tmp/relocated", F_OK ) != -1 || !mapReceived) && ros::ok()) {
+        if (!keyboardActive) {
+            ROS_INFO_ONCE("rotating for localization...");
+            if (count++ > 25) {
+                rotate = !rotate;
+                count = 0;
+            }
+
+            if (controller) {
+                controller->drive(0, rotate ? 0.7 : 0);
+            }
+        }
+        rate.sleep();
+    }
+
+    if (controller) {
+        controller->drive(0, 0);
+    }
+
+    if (mapReceived) {
+        ROS_INFO("localized!");
     }
 }
 
-void rtabmapCallback1(const rtabmap_ros::Info& msg) {
+void rtabmapCallback(const rtabmap_ros::Info& msg) {
     rtabmap.shutdown();
     ROS_INFO("rtabmap started");
 
-    if (msg.loopClosureId > 0) {
-        ROS_INFO("localized!");
-        return;
-    }
-
-    if (access(RELOCATION_FLAG_FILE, F_OK ) != -1) {
-        // if file exists then we have been relocated and can't rely on proximity
-        rtabmap = nodeHande->subscribe("rtabmap/info", 1, rtabmapCallback2);
-    } else {
-        // if file doesn't exist then we can use proximity
-        proximity = nodeHande->subscribe("map", 1, proximityCallback);
-    }
+    map = nodeHande->subscribe("map", 1, mapCallback);
 
     sleep(1);
 
@@ -123,7 +97,7 @@ int main(int argc, char **argv) {
   ros::Subscriber keySub = n.subscribe("key_vel", 1, keyboardCallback);
 
   // this callback is triggered when rtabmap is started
-  rtabmap = n.subscribe("rtabmap/info", 1, rtabmapCallback1);
+  rtabmap = n.subscribe("rtabmap/info", 1, rtabmapCallback);
 
   controller = RovyMotorController::Create();
   if (controller->start(350, 3) < 0) {
@@ -139,7 +113,7 @@ int main(int argc, char **argv) {
   twistTimer.stop();
   controller->stop();
   rtabmap.shutdown();
-  proximity.shutdown();
+  map.shutdown();
 
   return 0;
 }
