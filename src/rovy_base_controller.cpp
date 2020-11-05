@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
   rtabmap = n.subscribe("rtabmap/info", 1, rtabmapCallback);
 
   controller = RovyMotorController::Create();
-  if (controller->start(450, 3) < 0) {
+  if (controller->start(550, 3) < 0) {
       ROS_ERROR("controller->start() returned error code");
       return -1;
   }
