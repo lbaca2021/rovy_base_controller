@@ -1,6 +1,6 @@
 #include "ros/ros.h"
 #include <geometry_msgs/Twist.h>
-#include <rtabmap_ros/Info.h>
+//#include <rtabmap_ros/Info.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <RovyMotorController.h>
 
